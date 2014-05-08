@@ -4,6 +4,7 @@ License: MIT
 '''
 
 import sys
+import json
 from lxml import etree
 
 SPHINX_NAMESPACE = 'http://sphinxsearch.com/'
@@ -63,6 +64,7 @@ class Int(BaseAttr):
 
 
 class BigInt(BaseAttr):
+    '''Unsigned 64-bit integer'''
 
     type = 'bigint'
 
@@ -95,6 +97,18 @@ class Timestamp(BaseAttr):
 
     def convert(self, value):
         return value.strftime('%s')
+
+
+class Json(BaseAttr):
+
+    type = 'json'
+
+    def __init__(self, name, encoder=None, default=None):
+        BaseAttr.__init__(self, name, default=default)
+        self.encoder = encoder
+
+    def convert(self, value):
+        return json.dumps(value, cls=self.encoder)
 
 
 class Pipe(object):
@@ -138,13 +152,34 @@ class Pipe(object):
 
 if __name__=='__main__':
     from datetime import datetime
-    with Pipe(fields=['title', 'body'], attrs=[Timestamp('date')]) as pipe:
+    pipe = Pipe(
+        fields = [
+            'title',
+            'body',
+        ],
+        attrs = [
+            Int('length'),
+            BigInt('size'),
+            Bool('publish'),
+            Float('weight'),
+            Multi('sections'),
+            Timestamp('date'),
+            Json('data'),
+        ],
+    )
+    with pipe:
         for i in range(100):
             pipe.document(
                 id = i,
                 title = u'title{}'.format(i),
                 body = u'body{}'.format(i),
+                length = i,
+                size = 2 ** (i % 50),
+                publish = i % 2,
+                weight = float(i) / (i+1),
+                sections = range(i, i+3),
                 date = datetime.now(),
+                data = {'i': i},
             )
         pipe.killlist(range(100, 200))
     print
